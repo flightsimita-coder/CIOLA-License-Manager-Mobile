@@ -1,0 +1,10 @@
+{
+  "name": "CIOLA License Manager",
+  "short_name": "CIOLA License",
+  "description": "Generatore privato licenze CIOLA_DDRMI, firma locale Ed25519",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#0b101a",
+  "theme_color": "#0b101a",
+  "lang": "it"
+}

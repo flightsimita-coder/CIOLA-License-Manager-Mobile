@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="color-scheme" content="dark"><meta name="theme-color" content="#0b101a"><link rel="manifest" href="./manifest.webmanifest">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'self'; worker-src 'self'; manifest-src 'self'; img-src 'none'; font-src 'none'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
+<title>CIOLA · License Manager</title>
+<style>
+:root{font:16px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#e9ecf4;background:#0b101a}*{box-sizing:border-box}
+body{margin:0;min-height:100vh;background:radial-gradient(ellipse at top right,#1e3152 0,transparent 50%),#0b101a}
+.wrap{max-width:520px;margin:auto;padding:26px 18px 48px}
+.brand{display:flex;gap:13px;align-items:center;margin:4px 0 25px}.logo{width:48px;height:48px;background:linear-gradient(135deg,#74bdf9,#837bef);border-radius:15px;display:grid;place-items:center;color:#0c1526;font-size:25px;font-weight:850}.brand h1{font-size:21px;margin:0;letter-spacing:.1px}.brand p{font-size:12px;color:#a1aabd;margin:5px 0 0}
+.card{background:#171f2e;border:1px solid #313c50;border-radius:18px;padding:20px;margin:16px 0;box-shadow:0 10px 30px #0002}
+h2{font-size:15px;margin:0 0 18px}.sub{font-size:13px;line-height:1.5;color:#b6c0d1;margin:5px 0 0}
+label{display:block;font-size:13px;color:#c8d0de;font-weight:650;margin-bottom:8px}
+input[type=text],input[type=password],input[type=file]{width:100%;background:#0e1523;color:#fff;border:1px solid #3f4e65;border-radius:10px;padding:14px 12px;min-height:48px;font-size:15px;outline:none}
+input:focus{border-color:#85beff;box-shadow:0 0 0 3px #85beff22}
+input[type=file]{font-size:12px}input::file-selector-button{background:#263851;color:white;border:0;border-radius:7px;padding:8px;margin-right:8px}
+.field{margin-top:17px}.field:first-of-type{margin-top:0}
+.tip{font-size:12px;color:#8491a5;margin:7px 0 0;line-height:1.5}
+.check{display:flex;gap:10px;align-items:start;color:#cbd4e3;font-size:13px;line-height:1.5;cursor:pointer}.check input{accent-color:#76b8fb;margin-top:3px;width:18px;height:18px}
+button{width:100%;border:0;border-radius:12px;color:#08192c;background:#8ac7fb;font-size:16px;font-weight:750;padding:15px;min-height:52px;cursor:pointer}button:disabled{opacity:.5;cursor:not-allowed}
+.secondary{background:#2b3b51;color:#eaf2ff;margin-top:11px}
+.ok,.err{margin-top:16px;border-radius:12px;padding:13px 14px;font-size:13px;line-height:1.5;word-break:break-word}
+.ok{background:#12362b;border:1px solid #28694f;color:#a8ecca}.err{background:#4d2527;border:1px solid #a14a53;color:#ffd2d4}
+.hide{display:none}.safety{border-left:3px solid #8ac7fb;padding-left:12px;color:#aeb9ca;font-size:12px;line-height:1.6;margin:17px 0}
+footer{text-align:center;color:#78889b;font-size:11px;margin:22px 0;line-height:1.7}.mono{font-family:ui-monospace,Menlo,Consolas,monospace;overflow-wrap:anywhere}
+</style>
+</head>
+<body><main class="wrap">
+<header class="brand"><div class="logo">✈</div><div><h1>CIOLA License Manager</h1><p>PRIVATE OWNER TOOL · OFFLINE · ED25519</p></div></header>
+<section class="card"><h2>Emetti una nuova licenza</h2>
+<div class="field"><label for="cid">Computer ID del cliente</label><input type="text" id="cid" placeholder="CID-XXXXXXXX-XXXXXXXX-XXXXXXXX-XXXXXXXX" autocapitalize="characters" autocomplete="off" spellcheck="false"><p class="tip">Incolla il codice ricevuto nella richiesta di attivazione.</p></div>
+<div class="field"><label for="keyfile">Chiave privata originale, cifrata (.pem)</label><input type="file" id="keyfile" accept=".pem,application/x-pem-file,text/plain"><p class="tip">Seleziona il backup originale <span class="mono">chiave_privata_cifrata.pem</span>. Non viene inviato in rete.</p></div>
+<div class="field"><label for="password">Password della chiave privata</label><input type="password" id="password" placeholder="Password originale" autocomplete="off"></div>
+<div class="field"><label class="check"><input id="paid" type="checkbox"><span>Ho verificato personalmente l'acquisto su Patreon e autorizzo l'emissione della licenza.</span></label></div>
+<div class="field"><button id="issue">Genera licenza firmata</button></div>
+<div id="status" class="hide" role="status" aria-live="polite"></div>
+<div id="actions" class="hide"><button id="share" class="secondary">Condividi licenza via email</button><button id="download" class="secondary">Salva il file .json</button></div>
+</section>
+<div class="safety">Funziona completamente sul dispositivo: nessuna libreria esterna, nessun collegamento Internet. La chiave privata non è inclusa in questo file. Custodisci il backup cifrato in una posizione protetta, preferibilmente locale su iPhone, e non inviarlo a nessuno.</div>
+<footer>CIOLA_DDRMI · Licenza permanente vincolata al PC<br>Compatibile con lo schema di licenza v1.1.0</footer>
+</main>
+<script>
+'use strict';
+/* Nessuna richiesta di rete e nessuna memorizzazione locale. */
+const PRODUCT='CIOLA_DDRMI';
+const PUBLIC_SPKI_B64='MCowBQYDK2VwAyEA01cviCCl3UotnRLVvdHYJx3tKD3lKsNuGiOpQ4Hxv1Q=';
+const $=id=>document.getElementById(id);
+const encoder=new TextEncoder();
+let currentFile=null;
+
+function bytesFromBase64(t){let bin=atob(t.replace(/\s+/g,''));return Uint8Array.from(bin, c=>c.charCodeAt(0));}
+function base64FromBytes(a){let t='';for(let i=0;i<a.length;i++)t+=String.fromCharCode(a[i]);return btoa(t);}
+function parseNode(buf,offset=0,limit=buf.length){
+ if(offset>=limit)throw new Error('ASN.1: dati incompleti');
+ let tag=buf[offset++];if(offset>=limit)throw new Error('ASN.1: lunghezza assente');
+ let first=buf[offset++],len;
+ if((first&128)===0)len=first;
+ else{const n=first&127;if(n===0||n>4||offset+n>limit)throw new Error('ASN.1: lunghezza invalida');len=0;for(let i=0;i<n;i++)len=len*256+buf[offset++];}
+ if(len<0||offset+len>limit)throw new Error('ASN.1: sequenza troncata');
+ return{tag,start:offset,end:offset+len,next:offset+len};
+}
+function inner(buf,node){let a=[],p=node.start;while(p<node.end){const n=parseNode(buf,p,node.end);a.push(n);p=n.next;}return a;}
+function assertTag(n,t){if(!n||n.tag!==t)throw new Error('Formato della chiave non supportato');return n;}
+function octets(buf,n){assertTag(n,0x04);return buf.slice(n.start,n.end);}
+function asInt(buf,n){assertTag(n,0x02);let v=0;for(let i=n.start;i<n.end;i++){v=v*256+buf[i];if(!Number.isSafeInteger(v))throw new Error('Intero ASN.1 troppo grande');}return v;}
+function oid(buf,n){assertTag(n,0x06);const b=buf.slice(n.start,n.end);if(!b.length)throw new Error('OID vuoto');let a=[Math.floor(b[0]/40),b[0]%40],v=0;for(let i=1;i<b.length;i++){v=v*128+(b[i]&127);if(!(b[i]&128)){a.push(v);v=0;}}return a.join('.');}
+function oidAlg(buf,n){const p=inner(buf,assertTag(n,0x30));return{oid:oid(buf,p[0]),args:p[1]};}
+async function decryptPKCS8(pem,password){
+ const match=/-----BEGIN ENCRYPTED PRIVATE KEY-----([\s\S]*?)-----END ENCRYPTED PRIVATE KEY-----/.exec(pem);
+ if(!match)throw new Error('Seleziona una chiave privata PKCS8 cifrata, non una chiave pubblica.');
+ const enc=bytesFromBase64(match[1]);const top=inner(enc,assertTag(parseNode(enc),0x30));
+ if(top.length!==2)throw new Error('PKCS8 non riconosciuto');
+ const alg=oidAlg(enc,top[0]);if(alg.oid!=='1.2.840.113549.1.5.13')throw new Error('Cifratura PEM diversa da PBES2.');
+ const seq=inner(enc,assertTag(alg.args,0x30));const kdf=oidAlg(enc,seq[0]);const cipher=oidAlg(enc,seq[1]);
+ if(kdf.oid!=='1.2.840.113549.1.5.12')throw new Error('Derivazione della chiave non supportata.');
+ const kp=inner(enc,assertTag(kdf.args,0x30));const salt=octets(enc,kp[0]);const iterations=asInt(enc,kp[1]);
+ if(iterations<1||iterations>10000000)throw new Error('Numero iterazioni PBKDF2 non valido.');
+ let hash='SHA-1';let optIndex=2;
+ if(kp[2]&&kp[2].tag===0x02)optIndex=3;
+ if(kp[optIndex]){
+  const prf=oidAlg(enc,kp[optIndex]);const hashes={
+   '1.2.840.113549.2.7':'SHA-1','1.2.840.113549.2.9':'SHA-256',
+   '1.2.840.113549.2.10':'SHA-384','1.2.840.113549.2.11':'SHA-512'};
+  hash=hashes[prf.oid];if(!hash)throw new Error('PRF PBKDF2 non supportato.');
+ }
+ const lengths={'2.16.840.1.101.3.4.1.2':128,'2.16.840.1.101.3.4.1.22':192,'2.16.840.1.101.3.4.1.42':256};
+ const length=lengths[cipher.oid];if(!length)throw new Error('Algoritmo AES-CBC non supportato.');
+ const iv=octets(enc,cipher.args);if(iv.length!==16)throw new Error('IV non valido');
+ const passKey=await crypto.subtle.importKey('raw',encoder.encode(password),'PBKDF2',false,['deriveKey']);
+ const aes=await crypto.subtle.deriveKey({name:'PBKDF2',salt,iterations,hash},passKey,{name:'AES-CBC',length},false,['decrypt']);
+ try{return new Uint8Array(await crypto.subtle.decrypt({name:'AES-CBC',iv},aes,octets(enc,top[1])));}
+ catch(e){throw new Error('Password errata o chiave privata cifrata danneggiata.');}
+}
+function newUUID(){if(typeof crypto.randomUUID==='function')return crypto.randomUUID();const b=crypto.getRandomValues(new Uint8Array(16));b[6]=(b[6]&15)|64;b[8]=(b[8]&63)|128;const h=Array.from(b,x=>x.toString(16).padStart(2,'0')).join('');return `${h.slice(0,8)}-${h.slice(8,12)}-${h.slice(12,16)}-${h.slice(16,20)}-${h.slice(20)}`;}
+function show(msg,kind){$('status').className=kind;$('status').textContent=msg;}
+function canonical(p){return JSON.stringify(Object.keys(p).sort().reduce((out,k)=>(out[k]=p[k],out),{}));}
+async function makeLicense(pem,password,cid){
+ const der=await decryptPKCS8(pem,password);
+ let privateKey;
+ try{privateKey=await crypto.subtle.importKey('pkcs8',der,{name:'Ed25519'},false,['sign']);}
+ catch(e){throw new Error('La chiave privata non è nel formato Ed25519 atteso, oppure Safari non supporta Ed25519.');}
+ finally{der.fill(0);}
+ const publicKey=await crypto.subtle.importKey('spki',bytesFromBase64(PUBLIC_SPKI_B64),{name:'Ed25519'},false,['verify']);
+ const payload={schema:1,product:PRODUCT,device_id:cid,license_id:newUUID(),issued_utc:new Date().toISOString().replace(/\.\d{3}Z$/,'Z')};
+ const msg=encoder.encode(canonical(payload));
+ const signature=new Uint8Array(await crypto.subtle.sign('Ed25519',privateKey,msg));
+ const valid=await crypto.subtle.verify('Ed25519',publicKey,signature,msg);
+ if(!valid)throw new Error('La chiave privata non corrisponde alla chiave pubblica di CIOLA_DDRMI v1.1.0. Non è stata emessa alcuna licenza.');
+ return{payload,signature:base64FromBytes(signature)};
+}
+function getJsonFile(){return currentFile;}
+function downloadFile(file){let url=URL.createObjectURL(file),a=document.createElement('a');a.href=url;a.download=file.name;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),6000);}
+$('cid').addEventListener('input',e=>{e.target.value=e.target.value.toUpperCase().replace(/\s+/g,'').slice(0,39);$('actions').className='hide';currentFile=null;});
+$('issue').addEventListener('click',async()=>{
+ $('actions').className='hide';currentFile=null;$('status').className='hide';
+ const cid=$('cid').value.trim().toUpperCase(),keyfile=$('keyfile').files[0],pass=$('password').value;
+ if(!/^CID-(?:[A-F0-9]{8}-){3}[A-F0-9]{8}$/.test(cid))return show('Computer ID non valido. Deve iniziare con CID- ed avere quattro gruppi da otto caratteri esadecimali.','err');
+ if(!keyfile)return show('Seleziona la tua chiave privata cifrata .pem.','err');
+ if(keyfile.size>50000)return show('File della chiave privata insolitamente grande.','err');
+ if(!pass)return show('Inserisci la password della chiave privata.','err');
+ if(!$('paid').checked)return show('Prima conferma di aver verificato il pagamento.','err');
+ if(!window.crypto||!crypto.subtle)return show('Questo visualizzatore non consente la crittografia. Apri la pagina in Safari recente con origine sicura.','err');
+ const button=$('issue');button.disabled=true;button.textContent='Firma in corso…';
+ try{
+  const pem=await keyfile.text();const doc=await makeLicense(pem,pass,cid);
+  const filename='CIOLA_DDRMI_LICENZA_'+doc.payload.license_id+'.json';
+  currentFile=new File([JSON.stringify(doc,null,2)+'\n'],filename,{type:'application/json'});
+  $('password').value='';$('keyfile').value='';
+  $('actions').className='';
+  show('Licenza generata e verificata con la chiave pubblica ufficiale. ID: '+doc.payload.license_id+' · PC: '+cid+'\nUsa “Condividi” per allegare il JSON alla risposta email.','ok');
+ }catch(e){show(e.message||'Impossibile emettere la licenza.','err');}
+ finally{button.disabled=false;button.textContent='Genera licenza firmata';}
+});
+$('share').addEventListener('click',async()=>{
+ const f=getJsonFile();if(!f)return;
+ try{
+  if(navigator.canShare&&navigator.canShare({files:[f]})){await navigator.share({files:[f],title:'Licenza CIOLA_DDRMI'});return;}
+  show('Condivisione diretta non disponibile: salvo il JSON in Download, così puoi allegarlo dall’app Mail.','ok');downloadFile(f);
+ }catch(e){if(e.name!=='AbortError')show('Condivisione non riuscita: usa «Salva il file .json».','err');}
+});
+$('download').addEventListener('click',()=>{const f=getJsonFile();if(f)downloadFile(f);});
+if('serviceWorker' in navigator && location.protocol==='https:')navigator.serviceWorker.register('./sw.js',{updateViaCache:'none'}).catch(()=>{});
+</script></body></html>
